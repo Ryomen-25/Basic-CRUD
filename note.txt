@@ -1,0 +1,14 @@
+Campaigns
+- campaign_id
+- name
+- due date
+- created_at
+
+
+Pieces
+- pieces_id
+- campaign_id
+- name
+- content
+- content_type
+- created_at
