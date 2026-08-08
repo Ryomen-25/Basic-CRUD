@@ -1,8 +1,26 @@
-from fastapi import FastAPI, HTTPException , Request , Response
+from fastapi import FastAPI, HTTPException , Request , Response , Depends
 from datetime import datetime
-from typing import Any
+from typing import Any , Annotated
 from random import randint
+from sqlmodel import SQLModel ,create_engine, Session
 
+sqllite_file_name = "database.db"
+sqllite_url = f"sqllite:///{sqllite_file_name}"
+
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqllite_url, connect_args=connect_args)
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+    
+def get_session():
+    with Session(engine) as session:
+        yield session   
+        
+SessionDep = Annotated[Session, Depends(get_session)]
+        
+
+    
 app = FastAPI(root_path="/api/v1")
 
 @app.get("/")
