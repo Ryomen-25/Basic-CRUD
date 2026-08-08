@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException , Request
+from fastapi import FastAPI, HTTPException , Request , Response
 from datetime import datetime
 from typing import Any
 from random import randint
@@ -38,7 +38,7 @@ async def read_campaign(id: int):
     raise HTTPException(status_code=404)
 
 # Create campaign endpoint
-@app.post("/campaigns")
+@app.post("/campaigns", status_code=201)
 async def create_campaign(body: dict[str, Any]):
     
     
@@ -69,5 +69,18 @@ async def update_campaign(id: int, body: dict[str, Any]):
             
             data[index] = updated
             return {"campaign": updated}
+    
+    raise HTTPException(status_code=404)
+
+
+# Delete campaign endpoint
+@app.delete("/campaigns/{id}")
+async def delete_campaign(id: int):
+    
+    for index, campaign in enumerate(data):
+        if campaign.get("campaign_id") == id:
+            data.pop(index)
+            
+            return Response(status_code=204)
     
     raise HTTPException(status_code=404)
