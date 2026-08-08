@@ -1,14 +1,23 @@
-from fastapi import FastAPI, HTTPException , Request , Response , Depends
-from datetime import datetime
+from fastapi import FastAPI, HTTPException , Response , Depends
+from datetime import datetime , timezone
 from typing import Any , Annotated
 from random import randint
-from sqlmodel import SQLModel ,create_engine, Session
+from sqlmodel import SQLModel ,create_engine, Session , Field , select
+from fastapi.concurrency import asynccontextmanager
 
-sqllite_file_name = "database.db"
-sqllite_url = f"sqllite:///{sqllite_file_name}"
+
+class Campaign(SQLModel, table=True):
+    campaign_id : int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    due_date: datetime | None = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
+
+
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}
-engine = create_engine(sqllite_url, connect_args=connect_args)
+engine = create_engine(sqlite_url, connect_args=connect_args)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -18,10 +27,23 @@ def get_session():
         yield session   
         
 SessionDep = Annotated[Session, Depends(get_session)]
-        
+  
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db_and_tables()
+    with Session(engine) as session :
+        if not session.exec(select(Campaign)).first():
+            session.add_all([
+                Campaign(name="intern interview", due_date=datetime.now()),
+                Campaign(name="intern assesment", due_date=datetime.now())
+            ])
+            session.commit()
+    yield
+
+      
 
     
-app = FastAPI(root_path="/api/v1")
+app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 
 @app.get("/")
 async def root():
