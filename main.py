@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException , Response , Depends
+from fastapi import FastAPI, HTTPException , Depends
 from datetime import datetime , timezone
 from typing import Any , Annotated , Generic , TypeVar
-from random import randint
 from sqlmodel import SQLModel ,create_engine, Session , Field , select
 from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
@@ -12,6 +11,9 @@ class Campaign(SQLModel, table=True):
     due_date: datetime | None = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
 
+class CampaignCreate(SQLModel):
+    name: str
+    due_date: datetime | None = None
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -67,3 +69,10 @@ async def read_campaign(id: int, session: SessionDep):
     return {"data": data}
 
 # Create campaign endpoint
+@app.post("/campaigns", status_code=201, response_model= Response[Campaign])
+async def create_campaigns(campaign: CampaignCreate, session: SessionDep):
+    db_campaign = Campaign.model_validate(campaign)
+    session.add(db_campaign)
+    session.commit()
+    session.refresh(db_campaign)
+    return {"data": db_campaign}
