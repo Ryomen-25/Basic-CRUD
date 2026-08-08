@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException , Depends
 from datetime import datetime , timezone
-from typing import Any , Annotated , Generic , TypeVar
+from typing import  Annotated , Generic , TypeVar
 from sqlmodel import SQLModel ,create_engine, Session , Field , select
 from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
@@ -90,3 +90,11 @@ async def update_campaign(id: int, campaign: CampaignCreate, session: SessionDep
     session.refresh(data)
     return {"data": data}
     
+# Delete campaign endpoint
+@app.delete("/campaigns/{id}", status_code=204)
+async def delete_campaign(id: int, session: SessionDep):
+    data = session.get(Campaign, id)
+    if not data:
+        raise HTTPException(status_code=404)
+    session.delete(data)
+    session.commit()
