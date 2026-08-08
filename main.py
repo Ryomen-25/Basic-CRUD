@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException , Response , Depends
 from datetime import datetime , timezone
-from typing import Any , Annotated
+from typing import Any , Annotated , Generic , TypeVar
 from random import randint
 from sqlmodel import SQLModel ,create_engine, Session , Field , select
 from fastapi.concurrency import asynccontextmanager
-
+from pydantic import BaseModel
 
 class Campaign(SQLModel, table=True):
     campaign_id : int | None = Field(default=None, primary_key=True)
@@ -39,7 +39,6 @@ async def lifespan(app: FastAPI):
             ])
             session.commit()
     yield
-
       
 
     
@@ -49,78 +48,22 @@ app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 async def root():
     return {"message": "Hello"}
 
-data : Any = [
-    {
-        "campaign_id": 1,
-        "name": "Summer Training",
-        "due_date": datetime.now(),
-        "created_at": datetime.now()
-    },     
-    {
-        "campaign_id": 2,
-        "name": "Summer Internship",
-        "due_date": datetime.now(),
-        "created_at": datetime.now()
-    }
-]
+T = TypeVar("T")
+class Response(BaseModel, Generic[T]):
+    data: T
 
 #  Retrieve all the campaigns data
-@app.get("/campaigns")
-async def read_campaigns():
-    return {"campaigns": data}
+@app.get("/campaigns", response_model=Response[list[Campaign]])
+async def read_campaigns(session: SessionDep):
+    data = session.exec(select(Campaign)).all()
+    return {"data": data}
 
 # Retrieve the data of single chosen campaign
-@app.get("/campaigns/{id}")
-async def read_campaign(id: int): 
-    for campaign in data:
-        if campaign.get("campaign_id") == id:
-            return {"campaign": campaign}
-    raise HTTPException(status_code=404)
+@app.get("/campaigns/{id}", response_model=Response[Campaign])
+async def read_campaign(id: int, session: SessionDep): 
+    data = session.get(Campaign, id)
+    if not data:
+        raise HTTPException(status_code=404)
+    return {"data": data}
 
 # Create campaign endpoint
-@app.post("/campaigns", status_code=201)
-async def create_campaign(body: dict[str, Any]):
-    
-    
-    new : Any = {
-        "campaign_id": randint(100,1000),
-        "name": body.get("name"),
-        "due_date": body.get("due_date"),
-        "created_at": body.get("created_at")
-    }
-    # add the new campaign data
-    data.append(new)
-    
-    return {"campaign": new}
-
-#Update campaign data endpoint
-@app.put("/campaigns/{id}")
-async def update_campaign(id: int, body: dict[str, Any]):
-    
-    for index, campaign in enumerate(data):
-        if campaign.get("campaign_id") == id:
-            
-            updated : Any = {
-                "campaign_id": id,
-                "name": body.get("name"),
-                "due_date": body.get("due_date"),
-                "created_at": campaign.get("created_at")
-            }
-            
-            data[index] = updated
-            return {"campaign": updated}
-    
-    raise HTTPException(status_code=404)
-
-
-# Delete campaign endpoint
-@app.delete("/campaigns/{id}")
-async def delete_campaign(id: int):
-    
-    for index, campaign in enumerate(data):
-        if campaign.get("campaign_id") == id:
-            data.pop(index)
-            
-            return Response(status_code=204)
-    
-    raise HTTPException(status_code=404)
