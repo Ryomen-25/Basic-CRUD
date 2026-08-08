@@ -23,14 +23,16 @@ data : Any = [
     }
 ]
 
+#  Retrieve all the campaigns data
 @app.get("/campaigns")
 async def read_campaigns():
     return {"campaigns": data}
 
-
+# Retrieve the data of single chosen campaign
 @app.get("/campaigns/{id}")
-async def read_campaign(id: int):
+async def read_campaign(id: int): 
     for campaign in data:
         if campaign.get("campaign_id") == id:
-            return {"campaign": id}
+            return {"campaign": campaign}
     raise HTTPException(status_code=404)
+
