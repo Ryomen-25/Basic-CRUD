@@ -68,6 +68,6 @@ async def update_campaign(id: int, body: dict[str, Any]):
             }
             
             data[index] = updated
-            
+            return {"campaign": updated}
     
     raise HTTPException(status_code=404)
